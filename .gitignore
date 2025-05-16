@@ -1,0 +1,59 @@
+# Build results
+bin/
+obj/
+out/
+
+# VS Code settings
+.vscode/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio folder
+.vs/
+
+# Auto-generated files
+Generated\_Files/
+
+# DotCover
+*.dcvr
+
+# NCrunch
+*.ncrunch*
+.*crunch*.local.xml
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# Rider
+.idea/
+
+# NUnit
+TestResult.xml
+TestResult-*.xml
+
+# Coverage reports
+coverage*.json
+coverage*.xml
+coverage*.info
+*.lcov
+*.coverage
+*.coveragexml
+__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Git ignore itself
+!.gitignore
