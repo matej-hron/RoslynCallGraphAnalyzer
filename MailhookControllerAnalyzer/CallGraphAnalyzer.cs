@@ -44,7 +44,7 @@ public class CallGraphAnalyzer
                     if (symbol == null) continue;
 
                     var methodId = symbol.ToDisplayString();
-                    if (methodId.Contains(_entryMethodName))
+                    if (methodId == _entryMethodName)
                     {
                         await TraverseCalls(symbol, solution);
                     }
@@ -77,14 +77,22 @@ public class CallGraphAnalyzer
                     var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
                     if (symbol == null) continue;
 
+                    if (symbol.ContainingAssembly?.Name?.StartsWith("System") == true)
+                        continue; // optional: skip System.* calls
+
                     var containingMethod = invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
                     if (containingMethod == null) continue;
 
                     var containerSymbol = semanticModel.GetDeclaredSymbol(containingMethod);
-                    if (!SymbolEqualityComparer.Default.Equals(containerSymbol, methodSymbol)) continue;
+                    if (containerSymbol == null) continue;
+
+                    var containerId = containerSymbol.ToDisplayString();
+                    if (!_callGraph.ContainsKey(containerId)) continue;
 
                     var calledId = symbol.ToDisplayString();
-                    _callGraph[methodId].Add(calledId);
+                    if (!_callGraph[containerId].Contains(calledId))
+                        _callGraph[containerId].Add(calledId);
+
                     await TraverseCalls(symbol, solution);
 
                     // Handle interface calls
@@ -94,7 +102,9 @@ public class CallGraphAnalyzer
                         foreach (var impl in impls)
                         {
                             var implId = impl.ToDisplayString();
-                            _callGraph[methodId].Add(implId);
+                            if (!_callGraph[containerId].Contains(implId))
+                                _callGraph[containerId].Add(implId);
+
                             await TraverseCalls(impl, solution);
                         }
                     }
@@ -126,7 +136,7 @@ public class CallGraphAnalyzer
     public void PrintJson()
     {
         var json = JsonSerializer.Serialize(_callGraph, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(@"c:\temp\callgraph.json", json);
+        File.WriteAllText(@"c:\\temp\\callgraph.json", json);
         Console.WriteLine(json);
     }
 }
@@ -146,6 +156,6 @@ public static class Extensions
     }
 } // usage example
 
-// var analyzer = new CallGraphAnalyzer("MyController.MyMethod");
+// var analyzer = new CallGraphAnalyzer("MyNamespace.MyController.MyMethod()");
 // await analyzer.AnalyzeSolution(@"path\to\your.sln");
 // analyzer.PrintJson();
