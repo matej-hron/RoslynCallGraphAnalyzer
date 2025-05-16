@@ -35,15 +35,16 @@ public class CallGraphPathFinder
             }
         }
 
-        var simplifiedPaths = paths
-            .Select(p => SimplifyPath(p))
-            .Distinct(new SequenceComparer())
-            .OrderBy(p => string.Join(" -> ", p))
+        var simplifiedPairs = paths
+            .Select(p => (original: p, simplified: SimplifyPath(p)))
+            .DistinctBy(pair => string.Join(" -> ", pair.simplified))
+            .OrderBy(pair => string.Join(" -> ", pair.simplified))
             .ToList();
 
+        var simplifiedPaths = simplifiedPairs.Select(p => p.simplified).ToList();
         File.WriteAllText("c:\\temp\\mtcallgraphpaths.json", JsonSerializer.Serialize(simplifiedPaths, new JsonSerializerOptions { WriteIndented = true }));
 
-        var mermaid = GenerateMermaidGraph(simplifiedPaths);
+        var mermaid = MermaidGraphRenderer.Generate(simplifiedPairs, targetMethod);
         File.WriteAllText("c:\\temp\\mtcallgraphpaths.mmd", mermaid);
     }
 
@@ -80,50 +81,6 @@ public class CallGraphPathFinder
         }
 
         return simplified;
-    }
-
-    private static string GenerateMermaidGraph(List<List<string>> paths)
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("graph TD");
-        var edges = new HashSet<string>();
-        var labels = new Dictionary<string, string>();
-        int idCounter = 1;
-
-        string GetOrCreateId(string label)
-        {
-            if (!labels.ContainsKey(label))
-                labels[label] = $"A{idCounter++}";
-            return labels[label];
-        }
-
-        foreach (var path in paths)
-        {
-            for (int i = 0; i < path.Count - 1; i++)
-            {
-                var fromLabel = path[i];
-                var toLabel = path[i + 1];
-
-                var fromId = GetOrCreateId(fromLabel);
-                var toId = GetOrCreateId(toLabel);
-
-                var edge = $"{fromId} --> {toId}";
-                edges.Add(edge);
-            }
-        }
-
-        foreach (var kvp in labels)
-        {
-            var safeLabel = kvp.Key.Replace("\"", "'");
-            sb.AppendLine($"{kvp.Value}[\"{safeLabel}\"]");
-        }
-
-        foreach (var edge in edges)
-        {
-            sb.AppendLine(edge);
-        }
-
-        return sb.ToString();
     }
 
     private Dictionary<string, List<string>> BuildReverseGraph()
