@@ -8,12 +8,15 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
+using Microsoft.CodeAnalysis.FindSymbols;
 
 public class CallGraphAnalyzer
 {
     private readonly Dictionary<string, List<string>> _callGraph = new();
     private readonly HashSet<string> _visited = new();
     private readonly string _entryMethodName;
+    private readonly Dictionary<string, List<IMethodSymbol>> _callsByMethod = new();
+    private Solution? _solution;
 
     public CallGraphAnalyzer(string entryMethodName)
     {
@@ -24,8 +27,21 @@ public class CallGraphAnalyzer
     {
         MSBuildLocator.RegisterDefaults();
         using var workspace = MSBuildWorkspace.Create();
-        var solution = await workspace.OpenSolutionAsync(solutionPath);
+        _solution = await workspace.OpenSolutionAsync(solutionPath);
 
+        await BuildCallIndex(_solution);
+
+        foreach (var methodId in _callsByMethod.Keys)
+        {
+            if (methodId == _entryMethodName)
+            {
+                await TraverseCalls(methodId);
+            }
+        }
+    }
+
+    private async Task BuildCallIndex(Solution solution)
+    {
         foreach (var project in solution.Projects)
         {
             var compilation = await project.GetCompilationAsync();
@@ -40,72 +56,54 @@ public class CallGraphAnalyzer
                 var methodDeclarations = syntaxRoot.DescendantNodes().OfType<MethodDeclarationSyntax>();
                 foreach (var methodDecl in methodDeclarations)
                 {
-                    var symbol = semanticModel.GetDeclaredSymbol(methodDecl);
-                    if (symbol == null) continue;
+                    var methodSymbol = semanticModel.GetDeclaredSymbol(methodDecl) as IMethodSymbol;
+                    if (methodSymbol == null) continue;
 
-                    var methodId = symbol.ToDisplayString();
-                    if (methodId == _entryMethodName)
+                    var methodId = methodSymbol.ToDisplayString();
+                    if (!_callsByMethod.ContainsKey(methodId))
+                        _callsByMethod[methodId] = new List<IMethodSymbol>();
+
+                    var invocations = methodDecl.DescendantNodes().OfType<InvocationExpressionSyntax>();
+                    foreach (var invocation in invocations)
                     {
-                        await TraverseCalls(symbol, solution);
+                        var calledSymbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+                        if (calledSymbol == null) continue;
+                        if (calledSymbol.ContainingAssembly?.Name?.StartsWith("System") == true)
+                            continue;
+
+                        _callsByMethod[methodId].Add(calledSymbol);
                     }
                 }
             }
-        }
-    }
 
-    private async Task TraverseCalls(IMethodSymbol methodSymbol, Solution solution)
-    {
-        var methodId = methodSymbol.ToDisplayString();
-        if (_visited.Contains(methodId)) return;
-        _visited.Add(methodId);
-        _callGraph[methodId] = new List<string>();
-
-        foreach (var project in solution.Projects)
-        {
-            var compilation = await project.GetCompilationAsync();
-            if (compilation == null) continue;
-
-            foreach (var document in project.Documents)
+            foreach (var type in compilation.GlobalNamespace.GetNamespaceTypes())
             {
-                var syntaxRoot = await document.GetSyntaxRootAsync();
-                var semanticModel = await document.GetSemanticModelAsync();
-                if (syntaxRoot == null || semanticModel == null) continue;
-
-                var invocations = syntaxRoot.DescendantNodes().OfType<InvocationExpressionSyntax>();
-                foreach (var invocation in invocations)
+                foreach (var method in type.GetMembers().OfType<IMethodSymbol>())
                 {
-                    var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-                    if (symbol == null) continue;
+                    var methodId = method.ToDisplayString();
+                    if (!_callsByMethod.ContainsKey(methodId))
+                        _callsByMethod[methodId] = new List<IMethodSymbol>();
 
-                    if (symbol.ContainingAssembly?.Name?.StartsWith("System") == true)
-                        continue; // optional: skip System.* calls
-
-                    var containingMethod = invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-                    if (containingMethod == null) continue;
-
-                    var containerSymbol = semanticModel.GetDeclaredSymbol(containingMethod);
-                    if (containerSymbol == null) continue;
-
-                    var containerId = containerSymbol.ToDisplayString();
-                    if (!_callGraph.ContainsKey(containerId)) continue;
-
-                    var calledId = symbol.ToDisplayString();
-                    if (!_callGraph[containerId].Contains(calledId))
-                        _callGraph[containerId].Add(calledId);
-
-                    await TraverseCalls(symbol, solution);
-
-                    // Handle interface calls
-                    if (symbol.ContainingType.TypeKind == TypeKind.Interface)
+                    foreach (var syntaxRef in method.DeclaringSyntaxReferences)
                     {
-                        var impls = await FindImplementations(symbol, solution);
-                        foreach (var impl in impls)
+                        var syntax = await syntaxRef.GetSyntaxAsync();
+                        if (syntax is MethodDeclarationSyntax methodSyntax)
                         {
-                            var implId = impl.ToDisplayString();
-                            if (!_callGraph[containerId].Contains(implId))
-                                _callGraph[containerId].Add(implId);
+                            var tree = methodSyntax.SyntaxTree;
+                            if (!compilation.SyntaxTrees.Contains(tree)) continue;
 
-                            await TraverseCalls(impl, solution);
+                            var semanticModel = compilation.GetSemanticModel(tree);
+                            var invocations = methodSyntax.DescendantNodes().OfType<InvocationExpressionSyntax>();
+
+                            foreach (var invocation in invocations)
+                            {
+                                var calledSymbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+                                if (calledSymbol == null) continue;
+                                if (calledSymbol.ContainingAssembly?.Name?.StartsWith("System") == true)
+                                    continue;
+
+                                _callsByMethod[methodId].Add(calledSymbol);
+                            }
                         }
                     }
                 }
@@ -113,30 +111,41 @@ public class CallGraphAnalyzer
         }
     }
 
-    private async Task<List<IMethodSymbol>> FindImplementations(IMethodSymbol interfaceMethod, Solution solution)
+    private async Task TraverseCalls(string methodId)
     {
-        var results = new List<IMethodSymbol>();
-        foreach (var project in solution.Projects)
+        if (_visited.Contains(methodId)) return;
+        _visited.Add(methodId);
+        _callGraph[methodId] = new List<string>();
+
+        if (!_callsByMethod.TryGetValue(methodId, out var callees)) return;
+
+        foreach (var callee in callees)
         {
-            var compilation = await project.GetCompilationAsync();
-            if (compilation == null) continue;
+            var calleeId = callee.ToDisplayString();
+            if (!_callGraph[methodId].Contains(calleeId))
+                _callGraph[methodId].Add(calleeId);
 
-            foreach (var type in compilation.GlobalNamespace.GetNamespaceTypes())
+            await TraverseCalls(calleeId);
+
+            if (callee.ContainingType.TypeKind == TypeKind.Interface && _solution != null)
             {
-                if (!type.AllInterfaces.Contains(interfaceMethod.ContainingType)) continue;
+                var impls = await SymbolFinder.FindImplementationsAsync(callee, _solution);
+                foreach (var impl in impls.OfType<IMethodSymbol>())
+                {
+                    var implId = impl.ToDisplayString();
+                    if (!_callGraph[methodId].Contains(implId))
+                        _callGraph[methodId].Add(implId);
 
-                var match = type.GetMembers().OfType<IMethodSymbol>()
-                    .FirstOrDefault(m => m.Name == interfaceMethod.Name);
-                if (match != null) results.Add(match);
+                    await TraverseCalls(implId);
+                }
             }
         }
-        return results;
     }
 
     public void PrintJson()
     {
         var json = JsonSerializer.Serialize(_callGraph, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(@"c:\\temp\\callgraph.json", json);
+        File.WriteAllText(@"c:\\temp\\mtcallgraph.json", json);
         Console.WriteLine(json);
     }
 }
