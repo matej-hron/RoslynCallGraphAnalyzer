@@ -23,12 +23,16 @@ RoslynCallGraphAnalyzer.exe analyze <solutionPath> <entryMethod> <outputFolder>
 Example:
 
 ```
-.\RoslynCallGraphAnalyzer.exe analyze "C:\src\Teamspace-MiddleTier\Source\MiddleTier.sln" "Microsoft.Teams.MiddleTier.Mailhook.Controllers.MailhookController.ProvisionEmailAddress(string)" "C:\temp\callgraph"
+RoslynCallGraphAnalyzer.exe analyze "C:\src\Teamspace-MiddleTier\Source\MiddleTier.sln" "Microsoft.Teams.MiddleTier.Mailhook.Controllers.MailhookController.ProvisionEmailAddress(string)" "C:\temp\callgraph"
 ```
 
 This produces:
 
 * `mtcallgraph.json` — full call graph starting from `entryMethod`
+
+### ⚠️ Performance Note
+
+> Analyzing large solutions may take several minutes or longer depending on size and complexity. Roslyn processes all syntax trees and semantic models to build the call graph.
 
 ### 2. Find all paths to a target method
 
@@ -39,7 +43,7 @@ RoslynCallGraphAnalyzer.exe paths <inputFolder> <targetMethod>
 Example:
 
 ```
-RoslynCallGraphAnalyzer.exe paths "C:\temp\callgraph" "SetThreadPropertyOnBehalfOfUser"
+.\RoslynCallGraphAnalyzer.exe paths "C:\temp\callgraph" "SetThreadPropertyOnBehalfOfUser"
 ```
 
 This produces:
