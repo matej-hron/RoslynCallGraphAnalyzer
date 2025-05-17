@@ -46,6 +46,9 @@ public class CallGraphPathFinder
 
         var mermaid = MermaidGraphRenderer.Generate(simplifiedPairs, targetMethod);
         File.WriteAllText("c:\\temp\\mtcallgraphpaths.mmd", mermaid);
+
+        var leafMethods = paths.Select(p => p.Last()).Distinct().OrderBy(m => m).ToList();
+        File.WriteAllText("c:\\temp\\mtcallgraphleafs.json", JsonSerializer.Serialize(leafMethods, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static List<string> SimplifyPath(List<string> path)
