@@ -24,7 +24,7 @@ if (args[0] == "analyze")
 
     var analyzer = new CallGraphAnalyzer(entryMethod);
     await analyzer.AnalyzeSolution(solutionPath);
-    analyzer.PrintJson(Path.Combine(outputFolder, "mtcallgraph.json"));
+    analyzer.PrintJson(outputFolder);
 }
 else if (args[0] == "paths")
 {
