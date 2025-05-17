@@ -142,11 +142,13 @@ public class CallGraphAnalyzer
         }
     }
 
-    public void PrintJson()
+    public void PrintJson(string outputFolder)
     {
+        Directory.CreateDirectory(outputFolder);
+        var path = Path.Combine(outputFolder, "mtcallgraph.json");
         var json = JsonSerializer.Serialize(_callGraph, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(@"c:\\temp\\mtcallgraph.json", json);
-        Console.WriteLine(json);
+        File.WriteAllText(path, json);
+        Console.WriteLine($"Call graph saved to {path}");
     }
 }
 
@@ -163,8 +165,4 @@ public static class Extensions
                 yield return type;
         }
     }
-} // usage example
-
-// var analyzer = new CallGraphAnalyzer("MyNamespace.MyController.MyMethod()");
-// await analyzer.AnalyzeSolution(@"path\to\your.sln");
-// analyzer.PrintJson();
+}

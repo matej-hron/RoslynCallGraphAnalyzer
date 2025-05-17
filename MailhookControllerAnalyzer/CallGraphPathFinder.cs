@@ -17,8 +17,10 @@ public class CallGraphPathFinder
         return new CallGraphPathFinder(graph ?? new());
     }
 
-    public void PrintPathsTo(string targetMethod)
+    public void PrintPathsTo(string targetMethod, string outputFolder)
     {
+        Directory.CreateDirectory(outputFolder);
+
         var reverseGraph = BuildReverseGraph();
         var paths = new List<List<string>>();
 
@@ -42,13 +44,13 @@ public class CallGraphPathFinder
             .ToList();
 
         var simplifiedPaths = simplifiedPairs.Select(p => p.simplified).ToList();
-        File.WriteAllText("c:\\temp\\mtcallgraphpaths.json", JsonSerializer.Serialize(simplifiedPaths, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(Path.Combine(outputFolder, "mtcallgraphpaths.json"), JsonSerializer.Serialize(simplifiedPaths, new JsonSerializerOptions { WriteIndented = true }));
 
         var mermaid = MermaidGraphRenderer.Generate(simplifiedPairs, targetMethod);
-        File.WriteAllText("c:\\temp\\mtcallgraphpaths.mmd", mermaid);
+        File.WriteAllText(Path.Combine(outputFolder, "mtcallgraphpaths.mmd"), mermaid);
 
         var leafMethods = paths.Select(p => p.Last()).Distinct().OrderBy(m => m).ToList();
-        File.WriteAllText("c:\\temp\\mtcallgraphleafs.json", JsonSerializer.Serialize(leafMethods, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(Path.Combine(outputFolder, "mtcallgraphleafs.json"), JsonSerializer.Serialize(leafMethods, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static List<string> SimplifyPath(List<string> path)
