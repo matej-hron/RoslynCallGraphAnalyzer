@@ -63,6 +63,8 @@ To view the call graph paths:
 > 📷 You can see an example of a rendered Mermaid diagram below:
 >
 > ![Example Mermaid Graph](example.jpg)
+>
+> Or view it directly on Mermaid Live Editor: [https://mermaid.live/edit#pako\:eNp1kE1PwzAMhl\_F8pWwUraCkJqhVlazs7GxHSWx0AJNHKZP\_vcoDbebsbBzDMM8Z3fXKNwMl2j-icj1ESAHCndOQymuHoxl6yB65lMbzy8kH2sF2TjKz9koCrIZWWVvIEQESarvFGEciSk-dRmhhpPg5W27zPlqzmFyXqht\_JZ1FdhlokjeWsXzZ4lzYXfhQ6mfqZHOYLGWIR7MuQEd4fKkkXbXM6YbpCmcwHz\_3\_56-d-oKtg](https://mermaid.live/edit#pako:eNp1kE1PwzAMhl_F8pWwUraCkJqhVlazs7GxHSWx0AJNHKZP_vcoDbebsbBzDMM8Z3fXKNwMl2j-icj1ESAHCndOQymuHoxl6yB65lMbzy8kH2sF2TjKz9koCrIZWWVvIEQESarvFGEciSk-dRmhhpPg5W27zPlqzmFyXqht_JZ1FdhlokjeWsXzZ4lzYXfhQ6mfqZHOYLGWIR7MuQEd4fKkkXbXM6YbpCmcwHz_3_56-d-oKtg)
 
 ---
 
