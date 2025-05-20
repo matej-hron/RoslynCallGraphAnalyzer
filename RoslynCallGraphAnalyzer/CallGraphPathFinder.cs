@@ -44,13 +44,15 @@ public class CallGraphPathFinder
             .ToList();
 
         var simplifiedPaths = simplifiedPairs.Select(p => p.simplified).ToList();
-        File.WriteAllText(Path.Combine(outputFolder, "mtcallgraphpaths.json"), JsonSerializer.Serialize(simplifiedPaths, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(Path.Combine(outputFolder, "callgraphpaths.json"), JsonSerializer.Serialize(simplifiedPaths, new JsonSerializerOptions { WriteIndented = true }));
 
+        var mermaidFilePath = Path.Combine(outputFolder, "callgraphpaths.mmd");
         var mermaid = MermaidGraphRenderer.Generate(simplifiedPairs, targetMethod);
-        File.WriteAllText(Path.Combine(outputFolder, "mtcallgraphpaths.mmd"), mermaid);
+        File.WriteAllText(mermaidFilePath, mermaid);
+        //MermaidGraphRenderer.GenerateMermaidLiveLink(mermaidFilePath, mermaid);
 
         var leafMethods = paths.Select(p => p.Last()).Distinct().OrderBy(m => m).ToList();
-        File.WriteAllText(Path.Combine(outputFolder, "mtcallgraphleafs.json"), JsonSerializer.Serialize(leafMethods, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(Path.Combine(outputFolder, "callgraphleafs.json"), JsonSerializer.Serialize(leafMethods, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static List<string> SimplifyPath(List<string> path)

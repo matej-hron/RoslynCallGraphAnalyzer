@@ -48,17 +48,21 @@ Example:
 
 This produces:
 
-* `mtcallgraphpaths.json` — all simplified call paths
-* `mtcallgraphpaths.mmd` — call paths in Mermaid syntax
-* `mtcallgraphleafs.json` — leaf methods
+* `callgraphpaths.json` — all simplified call paths
+* `callgraphpaths.mmd` — call paths in Mermaid syntax
+* `callgraphleafs.json` — leaf methods
 
 ### Visualizing
 
 To view the call graph paths:
 
-1. Copy contents of `mtcallgraphpaths.mmd`
+1. Copy contents of `callgraphpaths.mmd`
 2. Go to [https://mermaid.live](https://mermaid.live)
 3. Paste and render the graph
+
+> 📷 You can see an example of a rendered Mermaid diagram below:
+>
+> ![Example Mermaid Graph](example.jpg)
 
 ---
 

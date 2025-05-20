@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using System.IO.Compression;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 public static class MermaidGraphRenderer
@@ -69,5 +71,33 @@ public static class MermaidGraphRenderer
         }
 
         return sb.ToString();
+    }
+
+    public static void GenerateMermaidLiveLink(string mermaidFilePath, string content)
+    {
+        var compressed = CompressToDeflate(content);
+        var base64 = Convert.ToBase64String(compressed)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+
+        var url = $"https://mermaid.live/edit#pako:{base64}";
+        Console.WriteLine("Mermaid preview link:");
+        Console.WriteLine(url);
+
+        // Optionally write it to file
+        File.WriteAllText(Path.ChangeExtension(mermaidFilePath, ".url.txt"), url);
+    }
+
+    private static byte[] CompressToDeflate(string input)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input);
+        using var output = new MemoryStream();
+        using (var deflate = new DeflateStream(output, CompressionLevel.Optimal, leaveOpen: true))
+        {
+            deflate.Write(bytes, 0, bytes.Length);
+        }
+        output.Position = 0;
+        return output.ToArray();
     }
 }
